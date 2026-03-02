@@ -1,10 +1,14 @@
 async function searchCountry(countryName) {
     const resultContainer = document.getElementById('country-info');
     const bordersContainer = document.getElementById('bordering-countries');
-    const errorContainer = document.getElementById('error');
+    const errorContainer = document.getElementById('error-message');
     const spinner = document.getElementById("loading-spinner");
     try {
-       
+        
+        resultContainer.innerHTML = "";
+        bordersContainer.innerHTML = "";
+        errorContainer.textContent = "";
+        
         if (!countryName.trim()){
             throw new Error("Please enter a Country name")
         }
@@ -25,14 +29,43 @@ async function searchCountry(countryName) {
         <p><strong>Region:</strong> ${country.region}</p>
         <img src="${country.flags.svg}" alt="${country.name.common} flag">`;
         // Fetch bordering countries
-        const resBordering = await fetch(`https://restcountries.com/v3.1/alpha/${code}`);
-        
+        //const resBordering = await fetch(`https://restcountries.com/v3.1/alpha/${code}`);
+        if (country.borders && country.borders.length > 0) {
+            const borderPromises = country.borders.map(code =>
+                fetch(`https://restcountries.com/v3.1/alpha/${code}`)
+                    .then(res => {
+                        if (!res.ok) {
+                            throw new Error("Error fetching border country.");
+                        }
+                        return res.json();
+                    })
+            );
+
+            const borderResults = await Promise.all(borderPromises);
+
+            borderResults.forEach(result => {
+                const borderCountry = result[0];
+
+                const borderElement = document.createElement("div");
+                borderElement.innerHTML = `
+                    <p>${borderCountry.name.common}</p>
+                    <img src="${borderCountry.flags.svg}" 
+                         alt="${borderCountry.name.common} flag" 
+                         width="100">
+                `;
+
+                bordersContainer.appendChild(borderElement);
+            });
+        } else {
+            bordersContainer.innerHTML = "<p>No bordering countries.</p>";
+        }
         // Update bordering countries section
 
 
     } catch (error) {
         // Show error message
-        output.textContent = "Failed to load user: " + error.message;
+        console.error(error);
+        errorContainer.textContent = "Failed to load user: " + error.message;
 
     } finally {
         // Hide loading spinner
